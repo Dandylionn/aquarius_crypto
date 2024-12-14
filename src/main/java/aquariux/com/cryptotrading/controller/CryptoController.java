@@ -8,7 +8,10 @@ import aquariux.com.cryptotrading.service.TradingService;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.Optional;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -24,8 +27,16 @@ public class CryptoController {
 
     // Endpoint to get the latest aggregated price for a trading pair
     @GetMapping("/prices")
-    public Price getLatestAggregatedPrice() {
-        return priceService.getLatestPrices().stream().findFirst().orElse(null);
+    public List<Price> getLatestAggregatedPrice() {
+        List<Price> allPrices = priceService.getLatestPrices();
+
+        // Group by trade pair and find the latest price for each pair
+        return allPrices.stream()
+                .collect(Collectors.groupingBy(Price::getTradePair,
+                        Collectors.maxBy(Comparator.comparing(Price::getTimestamp))))
+                .values().stream()
+                .map(Optional::get)
+                .collect(Collectors.toList());
     }
 
     // Endpoint to execute a trade (buy/sell)

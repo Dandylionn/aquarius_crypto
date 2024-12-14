@@ -56,4 +56,13 @@ public class Price {
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
     }
+    @Override
+    public String toString() {
+        return "Price{" +
+                "tradePair='" + tradePair + '\'' +
+                ", bidPrice=" + bidPrice +
+                ", askPrice=" + askPrice +
+                ", timestamp=" + timestamp +
+                '}';
+    }
 }
