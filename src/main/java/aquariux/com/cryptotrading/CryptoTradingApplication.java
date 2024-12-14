@@ -2,12 +2,12 @@ package aquariux.com.cryptotrading;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-public class CryptotradingApplication {
-
+@EnableScheduling
+public class CryptoTradingApplication {
 	public static void main(String[] args) {
-		SpringApplication.run(CryptotradingApplication.class, args);
+		SpringApplication.run(CryptoTradingApplication.class, args);
 	}
-
 }
