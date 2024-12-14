@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class TradingServiceImpl implements TradingService {
@@ -75,5 +76,15 @@ public class TradingServiceImpl implements TradingService {
         trade.setTradeTimestamp(LocalDateTime.now());
 
         return tradeRepository.save(trade);
+    }
+
+    // Fetch wallet balances for a user
+    public List<Wallet> getWalletsByUserId(Long userId) {
+        return walletRepository.findByUserId(userId);
+    }
+
+    // Retrieve trade history for a user
+    public List<Trade> getTradeHistory(Long userId) {
+        return tradeRepository.findByUserId(userId);
     }
 }
