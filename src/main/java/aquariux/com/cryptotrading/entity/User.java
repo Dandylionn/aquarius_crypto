@@ -11,7 +11,7 @@ public class User {
     private Long id;
 
     private String username;
-    private BigDecimal usdtBalance = BigDecimal.valueOf(50000.00); // Initial balance
+    private BigDecimal usdtBalance;
 
     // Getters and Setters
 

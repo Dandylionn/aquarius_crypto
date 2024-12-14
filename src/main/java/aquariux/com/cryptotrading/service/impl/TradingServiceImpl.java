@@ -7,11 +7,12 @@ import aquariux.com.cryptotrading.repository.TradeRepository;
 import aquariux.com.cryptotrading.repository.UserRepository;
 import aquariux.com.cryptotrading.repository.WalletRepository;
 import aquariux.com.cryptotrading.service.TradingService;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class TradingServiceImpl implements TradingService {
@@ -62,11 +63,11 @@ public class TradingServiceImpl implements TradingService {
             throw new RuntimeException("Invalid trade type");
         }
 
-        // Save the updated user and wallet details
-        userRepository.save(user);
-        walletRepository.save(wallet);
+        // Save the updated user and wallet details asynchronously
+        saveUserAsync(user);
+        saveWalletAsync(wallet);
 
-        // Create and save the trade record
+        // Create and save the trade record asynchronously
         Trade trade = new Trade();
         trade.setUserId(userId);
         trade.setTradePair(tradePair);
@@ -75,7 +76,30 @@ public class TradingServiceImpl implements TradingService {
         trade.setTradePrice(price);
         trade.setTradeTimestamp(LocalDateTime.now());
 
-        return tradeRepository.save(trade);
+        saveTradeAsync(trade);
+
+        return trade;
+    }
+
+    // Asynchronous method to save the user
+    @Async
+    public CompletableFuture<Void> saveUserAsync(User user) {
+        userRepository.save(user);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    // Asynchronous method to save the wallet
+    @Async
+    public CompletableFuture<Void> saveWalletAsync(Wallet wallet) {
+        walletRepository.save(wallet);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    // Asynchronous method to save the trade
+    @Async
+    public CompletableFuture<Void> saveTradeAsync(Trade trade) {
+        tradeRepository.save(trade);
+        return CompletableFuture.completedFuture(null);
     }
 
     // Fetch wallet balances for a user

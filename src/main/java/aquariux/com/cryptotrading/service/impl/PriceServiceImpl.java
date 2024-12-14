@@ -11,7 +11,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PriceServiceImpl implements PriceService {
@@ -23,6 +25,10 @@ public class PriceServiceImpl implements PriceService {
         this.priceRepository = priceRepository;
         this.restTemplate = restTemplate;
     }
+//    public Optional<Price> getLatestPrice(String tradePair) {
+//        return priceRepository.findTopByTradePairOrderByTimestampDesc(tradePair);
+//    }
+
 
     @Override
     @Scheduled(fixedRate = 10000) // 10 seconds
@@ -94,6 +100,12 @@ public class PriceServiceImpl implements PriceService {
         price.setAskPrice(bestAskPrice);
         price.setTimestamp(LocalDateTime.now());
         return price;
+    }
+
+    public Price getLatestPriceForPair(String tradePair) {
+        // Fetch the latest price for the given trade pair from the repository
+        return priceRepository.findTopByTradePairOrderByTimestampDesc(tradePair)
+                .orElseThrow(() -> new RuntimeException("Price not found for trade pair: " + tradePair));
     }
 
 

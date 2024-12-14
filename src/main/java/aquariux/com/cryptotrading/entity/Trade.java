@@ -1,5 +1,6 @@
 package aquariux.com.cryptotrading.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,6 +16,8 @@ public class Trade {
     private BigDecimal tradePrice;
     private BigDecimal tradeAmount;
     private String tradeType; // BUY or SELL
+//    private LocalDateTime tradeTimestamp;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime tradeTimestamp;
 
     // Getters and Setters

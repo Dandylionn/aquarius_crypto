@@ -6,4 +6,6 @@ import java.util.List;
 public interface PriceService {
     void fetchAndSaveLatestPrices();
     List<Price> getLatestPrices();
+    Price getLatestPriceForPair(String tradePair);
+
 }
