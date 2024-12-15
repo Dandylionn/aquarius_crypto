@@ -41,7 +41,19 @@ public class CryptoController {
     @PostMapping("/user")
     public User createUser(@RequestBody User user) {
         user.setUsdtBalance(BigDecimal.valueOf(50000.00)); // Set initial balance
-        return userService.save(user);
+
+        User savedUser = userService.save(user);
+
+        List<String> supportedCryptos = List.of("BTC", "ETH", "BNB"); // Add all supported symbols
+        for (String crypto : supportedCryptos) {
+            Wallet wallet = new Wallet();
+            wallet.setUserId(savedUser.getId());
+            wallet.setCryptoSymbol(crypto);
+            wallet.setBalance(BigDecimal.ZERO); // Start with zero balance
+            tradingService.saveWallet(wallet);
+        }
+
+        return savedUser;
     }
     @GetMapping("/user/{userId}")
     public ResponseEntity<User> getUserInfo(@PathVariable Long userId) {
@@ -70,48 +82,68 @@ public class CryptoController {
 
     // Endpoint to execute a trade (buy/sell)
     @PostMapping("/trade")
-    ResponseEntity<Trade> executeTrade(@RequestBody Trade trade){
+    public ResponseEntity<?> executeTrade(@RequestBody Trade trade) {
         if (trade == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid trade request.");
         }
+
         Long userId = trade.getUserId();
         String tradePair = trade.getTradePair();
         String tradeType = trade.getTradeType();
         BigDecimal amount = trade.getTradeAmount();
 
-        // Fetch the user (will throw RuntimeException if user is not found)
-        User user = userService.findById(userId);
+        try {
+            // Fetch the user (return 404 if user is not found)
+            User user = userService.findById(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+            }
 
-        // Fetch the latest price for the given trade pair
-        Price latestPrice = priceService.getLatestPriceForPair(tradePair);
+            // Fetch the latest price for the given trade pair
+            Price latestPrice = priceService.getLatestPriceForPair(tradePair);
+            if (latestPrice == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Trade pair not found.");
+            }
 
-        BigDecimal price = BigDecimal.ZERO;
+            BigDecimal price;
 
-        // Choose the best price for the trade
-        if ("BUY".equalsIgnoreCase(tradeType)) {
-            price = latestPrice.getAskPrice(); // For buying, we use the ask price
-        } else if ("SELL".equalsIgnoreCase(tradeType)) {
-            price = latestPrice.getBidPrice(); // For selling, we use the bid price
-        } else {
-            throw new RuntimeException("Invalid trade type");
+            // Determine trade price based on type
+            if ("BUY".equalsIgnoreCase(tradeType)) {
+                price = latestPrice.getAskPrice(); // Buy at ask price
+            } else if ("SELL".equalsIgnoreCase(tradeType)) {
+                price = latestPrice.getBidPrice(); // Sell at bid price
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Invalid trade type. Allowed values are 'BUY' or 'SELL'.");
+            }
+
+            // Check if user has sufficient balance
+            BigDecimal totalCost = price.multiply(amount);
+            if ("BUY".equalsIgnoreCase(tradeType) && user.getUsdtBalance().compareTo(totalCost) < 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Insufficient balance. Required: " + totalCost + ", Available: " + user.getUsdtBalance());
+            }
+
+            // Deduct balance for buy trades
+            if ("BUY".equalsIgnoreCase(tradeType)) {
+                user.setUsdtBalance(user.getUsdtBalance().subtract(totalCost));
+                userService.updateUserBalance(user.getId(), user.getUsdtBalance());
+            }
+
+            // Execute the trade
+            Trade executedTrade = tradingService.executeTrade(userId, tradePair, tradeType, amount, price);
+
+            // Return successful trade response
+            return ResponseEntity.ok(executedTrade);
+
+        } catch (Exception ex) {
+            // Log unexpected errors for debugging
+            ex.printStackTrace();
+
+            // Return generic error message for server-side issues
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred. Please try again later.");
         }
-
-        // Check if user has enough balance for the trade (e.g., if they are buying)
-        if ("BUY".equalsIgnoreCase(tradeType) && user.getUsdtBalance().compareTo(price.multiply(amount)) < 0) {
-            throw new RuntimeException("Insufficient balance");
-        }
-
-        // Deduct balance if the trade is a buy
-        if ("BUY".equalsIgnoreCase(tradeType)) {
-            user.setUsdtBalance(user.getUsdtBalance().subtract(price.multiply(amount)));
-            userService.updateUserBalance(user.getId(), user.getUsdtBalance()); // Update the user's balance after the trade
-        }
-
-        // Execute the trade and return the trade object
-//        return tradingService.executeTrade(userId, tradePair, tradeType, amount, price);
-        System.out.println("Trade details: " + trade);
-        System.out.println("Latest price for " + tradePair + ": " + latestPrice);
-        return ResponseEntity.ok(trade);
     }
 
     // Endpoint to fetch wallet balances for a user

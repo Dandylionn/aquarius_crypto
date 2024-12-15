@@ -10,5 +10,5 @@ public interface WalletService {
 
     void updateWalletBalance(Long userId, String cryptoSymbol, BigDecimal newBalance);
 
-    void createWallet(Long userId, String cryptoSymbol);
+    Wallet createWallet(Long userId, String cryptoSymbol, BigDecimal initialBalance);
 }

@@ -9,6 +9,8 @@ import aquariux.com.cryptotrading.repository.WalletRepository;
 import aquariux.com.cryptotrading.service.TradingService;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,48 +28,50 @@ public class TradingServiceImpl implements TradingService {
         this.walletRepository = walletRepository;
         this.tradeRepository = tradeRepository;
     }
+    @Override
+    @Transactional
+    public void saveWallet(Wallet wallet) {
+        walletRepository.save(wallet);
+    }
 
     @Override
     public Trade executeTrade(Long userId, String tradePair, String tradeType, BigDecimal amount, BigDecimal price) {
-        // Fetch the user and validate
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = validateUser(userId);
+        Wallet wallet = validateWallet(userId, extractCryptoSymbol(tradePair));
 
-        // Fetch the wallet for the crypto symbol (e.g., BTC, ETH)
-        String cryptoSymbol = tradePair.substring(0, tradePair.length() - 4); // Extract crypto symbol (e.g., "BTC" from "BTCUSDT")
-        Wallet wallet = walletRepository.findByUserIdAndCryptoSymbol(userId, cryptoSymbol)
-                .orElseThrow(() -> new RuntimeException("Wallet not found for " + cryptoSymbol));
-
-        // Logic for "BUY" trade type
         if ("BUY".equalsIgnoreCase(tradeType)) {
-            BigDecimal totalCost = amount.multiply(price);
-            if (user.getUsdtBalance().compareTo(totalCost) < 0) {
-                throw new RuntimeException("Insufficient USDT balance");
-            }
-            // Deduct USDT balance from the user
-            user.setUsdtBalance(user.getUsdtBalance().subtract(totalCost));
-
-            // Update the user's wallet with the new crypto balance (add to the balance)
-            wallet.setBalance(wallet.getBalance().add(amount));
-
+            processBuyTrade(user, wallet, amount, price);
         } else if ("SELL".equalsIgnoreCase(tradeType)) {
-            BigDecimal totalValue = amount.multiply(price);
-            if (wallet.getBalance().compareTo(amount) < 0) {
-                throw new RuntimeException("Insufficient " + cryptoSymbol + " balance");
-            }
-            // Deduct the crypto balance from the wallet
-            wallet.setBalance(wallet.getBalance().subtract(amount));
-
-            // Add the equivalent USDT to the user's balance
-            user.setUsdtBalance(user.getUsdtBalance().add(totalValue));
+            processSellTrade(user, wallet, amount, price);
         } else {
-            throw new RuntimeException("Invalid trade type");
+            throw new RuntimeException("Invalid trade type. Allowed values are 'BUY' or 'SELL'.");
         }
 
-        // Save the updated user and wallet details asynchronously
+        return saveTradeRecord(userId, tradePair, tradeType, amount, price);
+    }
+
+    private void processBuyTrade(User user, Wallet wallet, BigDecimal amount, BigDecimal price) {
+        BigDecimal totalCost = amount.multiply(price);
+        if (user.getUsdtBalance().compareTo(totalCost) < 0) {
+            throw new RuntimeException("Insufficient USDT balance.");
+        }
+        user.setUsdtBalance(user.getUsdtBalance().subtract(totalCost));
+        wallet.setBalance(wallet.getBalance().add(amount));
         saveUserAsync(user);
         saveWalletAsync(wallet);
+    }
 
-        // Create and save the trade record asynchronously
+    private void processSellTrade(User user, Wallet wallet, BigDecimal amount, BigDecimal price) {
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new RuntimeException("Insufficient crypto balance.");
+        }
+        wallet.setBalance(wallet.getBalance().subtract(amount));
+        user.setUsdtBalance(user.getUsdtBalance().add(amount.multiply(price)));
+        saveWalletAsync(wallet);
+        saveUserAsync(user);
+    }
+
+    private Trade saveTradeRecord(Long userId, String tradePair, String tradeType, BigDecimal amount, BigDecimal price) {
         Trade trade = new Trade();
         trade.setUserId(userId);
         trade.setTradePair(tradePair);
@@ -75,11 +79,23 @@ public class TradingServiceImpl implements TradingService {
         trade.setTradeAmount(amount);
         trade.setTradePrice(price);
         trade.setTradeTimestamp(LocalDateTime.now());
-
-        saveTradeAsync(trade);
-
-        return trade;
+        return tradeRepository.save(trade);
     }
+
+    private User validateUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found."));
+    }
+
+    private Wallet validateWallet(Long userId, String cryptoSymbol) {
+        return walletRepository.findByUserIdAndCryptoSymbol(userId, cryptoSymbol)
+                .orElseThrow(() -> new RuntimeException("Wallet not found for crypto symbol: " + cryptoSymbol));
+    }
+
+    private String extractCryptoSymbol(String tradePair) {
+        return tradePair.replace("USDT", "");
+    }
+
 
     // Asynchronous method to save the user
     @Async

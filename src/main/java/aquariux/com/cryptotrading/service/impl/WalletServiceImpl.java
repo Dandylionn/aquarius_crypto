@@ -30,10 +30,11 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    public void createWallet(Long userId, String cryptoSymbol) {
+    public Wallet createWallet(Long userId, String cryptoSymbol, BigDecimal initialBalance) {
         Wallet wallet = new Wallet();
         wallet.setUserId(userId);
         wallet.setCryptoSymbol(cryptoSymbol);
-        walletRepository.save(wallet);
+        wallet.setBalance(initialBalance);
+        return walletRepository.save(wallet);
     }
 }

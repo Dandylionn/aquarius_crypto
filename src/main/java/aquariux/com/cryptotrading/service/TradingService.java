@@ -14,6 +14,8 @@ public interface TradingService {
     // Fetch wallet balances for a user
     List<Wallet> getWalletsByUserId(Long userId);
 
+    void saveWallet(Wallet wallet);
+
     // Retrieve trade history for a user
     List<Trade> getTradeHistory(Long userId);
 }
