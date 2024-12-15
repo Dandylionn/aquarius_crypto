@@ -44,7 +44,7 @@ public class CryptoController {
 
         User savedUser = userService.save(user);
 
-        List<String> supportedCryptos = List.of("BTC", "ETH", "BNB"); // Add all supported symbols
+        List<String> supportedCryptos = List.of("BTC", "ETH");
         for (String crypto : supportedCryptos) {
             Wallet wallet = new Wallet();
             wallet.setUserId(savedUser.getId());
