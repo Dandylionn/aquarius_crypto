@@ -97,33 +97,31 @@ public class TradingServiceImpl implements TradingService {
     }
 
 
-    // Asynchronous method to save the user
+    // async to save user
     @Async
     public CompletableFuture<Void> saveUserAsync(User user) {
         userRepository.save(user);
         return CompletableFuture.completedFuture(null);
     }
 
-    // Asynchronous method to save the wallet
+    // async to save wallet
     @Async
     public CompletableFuture<Void> saveWalletAsync(Wallet wallet) {
         walletRepository.save(wallet);
         return CompletableFuture.completedFuture(null);
     }
 
-    // Asynchronous method to save the trade
+    // async to save trades
     @Async
     public CompletableFuture<Void> saveTradeAsync(Trade trade) {
         tradeRepository.save(trade);
         return CompletableFuture.completedFuture(null);
     }
 
-    // Fetch wallet balances for a user
     public List<Wallet> getWalletsByUserId(Long userId) {
         return walletRepository.findByUserId(userId);
     }
 
-    // Retrieve trade history for a user
     public List<Trade> getTradeHistory(Long userId) {
         return tradeRepository.findByUserId(userId);
     }

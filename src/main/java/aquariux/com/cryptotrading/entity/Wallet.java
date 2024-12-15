@@ -10,7 +10,7 @@ public class Wallet {
     private Long id;
 
     private Long userId;
-    private String cryptoSymbol; // BTC, ETH, etc.
+    private String cryptoSymbol; // BTC, ETH
     private BigDecimal balance = BigDecimal.ZERO;
 
     // Getters and Setters

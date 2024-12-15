@@ -30,14 +30,7 @@ public class CryptoController {
         this.tradingService = tradingService;
         this.userService = userService;
     }
-//    @PostMapping("/user")
-//    public User createUser(@RequestParam String username) {
-//        User newUser = new User();
-//        newUser.setUsername(username);
-//        // Set initial balance for the user
-//        newUser.setUsdtBalance(BigDecimal.valueOf(50000.00)); // Initial balance
-//        return userService.save(newUser);
-//    }
+
     @PostMapping("/user")
     public User createUser(@RequestBody User user) {
         user.setUsdtBalance(BigDecimal.valueOf(50000.00)); // Set initial balance
@@ -49,7 +42,7 @@ public class CryptoController {
             Wallet wallet = new Wallet();
             wallet.setUserId(savedUser.getId());
             wallet.setCryptoSymbol(crypto);
-            wallet.setBalance(BigDecimal.ZERO); // Start with zero balance
+            wallet.setBalance(BigDecimal.ZERO);
             tradingService.saveWallet(wallet);
         }
 
@@ -59,19 +52,19 @@ public class CryptoController {
     public ResponseEntity<User> getUserInfo(@PathVariable Long userId) {
         User user = userService.findById(userId);
         if (user != null) {
-            return ResponseEntity.ok(user); // Return 200
+            return ResponseEntity.ok(user);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)  // Return 404
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(null);
         }
     }
 
-    // Endpoint to get the latest aggregated price for a trading pair
+    //get the latest price for a trading pair
     @GetMapping("/prices")
     public List<Price> getLatestAggregatedPrice() {
         List<Price> allPrices = priceService.getLatestPrices();
 
-        // Group by trade pair and find the latest price for each pair
+        // group by trade pair and find the latest price
         return allPrices.stream()
                 .collect(Collectors.groupingBy(Price::getTradePair,
                         Collectors.maxBy(Comparator.comparing(Price::getTimestamp))))
@@ -80,7 +73,7 @@ public class CryptoController {
                 .collect(Collectors.toList());
     }
 
-    // Endpoint to execute a trade (buy/sell)
+    // execute trade (buy/sell)
     @PostMapping("/trade")
     public ResponseEntity<?> executeTrade(@RequestBody Trade trade) {
         if (trade == null) {
@@ -93,13 +86,13 @@ public class CryptoController {
         BigDecimal amount = trade.getTradeAmount();
 
         try {
-            // Fetch the user (return 404 if user is not found)
+            // fetch the user
             User user = userService.findById(userId);
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
             }
 
-            // Fetch the latest price for the given trade pair
+            // fetch the latest price
             Price latestPrice = priceService.getLatestPriceForPair(tradePair);
             if (latestPrice == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Trade pair not found.");
@@ -107,7 +100,7 @@ public class CryptoController {
 
             BigDecimal price;
 
-            // Determine trade price based on type
+            // determine trade price based on type
             if ("BUY".equalsIgnoreCase(tradeType)) {
                 price = latestPrice.getAskPrice(); // Buy at ask price
             } else if ("SELL".equalsIgnoreCase(tradeType)) {
@@ -117,14 +110,14 @@ public class CryptoController {
                         .body("Invalid trade type. Allowed values are 'BUY' or 'SELL'.");
             }
 
-            // Check if user has sufficient balance for buy trade
+            // check if user has sufficient balance for buy trade
             BigDecimal totalCost = price.multiply(amount);
             if ("BUY".equalsIgnoreCase(tradeType) && user.getUsdtBalance().compareTo(totalCost) < 0) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("Insufficient balance. Required: " + totalCost + ", Available: " + user.getUsdtBalance());
             }
 
-            // Deduct balance for buy trades
+            // deduct balance for buy trades
             if ("BUY".equalsIgnoreCase(tradeType)) {
                 user.setUsdtBalance(user.getUsdtBalance().subtract(totalCost));
                 userService.updateUserBalance(user.getId(), user.getUsdtBalance());
@@ -133,32 +126,28 @@ public class CryptoController {
             // Execute the trade
             Trade executedTrade = tradingService.executeTrade(userId, tradePair, tradeType, amount, price);
 
-            // Return successful trade response
             return ResponseEntity.ok(executedTrade);
 
         } catch (RuntimeException ex) {
-            // Handle Insufficient crypto balance gracefully
+            // handles Insufficient crypto balance
             if (ex.getMessage().contains("Insufficient crypto balance")) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("Insufficient crypto balance for the trade. Please check your wallet balance.");
             }
-
-            // Log unexpected errors for debugging
             ex.printStackTrace();
 
-            // Return generic error message for server-side issues
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An unexpected error occurred. Please try again later.");
         }
     }
 
-    // Endpoint to fetch wallet balances for a user
+    // fetch wallet balances for a user
     @GetMapping("/wallet/{userId}")
     public List<Wallet> getWallet(@PathVariable Long userId) {
         return tradingService.getWalletsByUserId(userId);
     }
 
-    // Endpoint to retrieve trade history for a user
+    // retrieve trade history for a user
     @GetMapping("/trades/{userId}")
     public List<Trade> getTradeHistory(@PathVariable Long userId) {
         return tradingService.getTradeHistory(userId);

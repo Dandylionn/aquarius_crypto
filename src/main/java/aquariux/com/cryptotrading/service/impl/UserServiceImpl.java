@@ -13,19 +13,17 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    // Constructor-based injection for UserRepository
     @Autowired
     public UserServiceImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
-    // Find user by ID
     @Override
     public User findById(Long userId) {
         return userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // Update user's USDT balance
+    // update user USDT balance
     @Override
     public User updateUserBalance(Long userId, BigDecimal newBalance) {
         User user = findById(userId);

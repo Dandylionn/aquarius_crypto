@@ -8,5 +8,5 @@ import java.util.Optional;
 
 public interface WalletRepository extends JpaRepository<Wallet, Long> {
     Optional<Wallet> findByUserIdAndCryptoSymbol(Long userId, String cryptoSymbol);
-    List<Wallet> findByUserId(Long userId);  // Fetch all wallets for a user
+    List<Wallet> findByUserId(Long userId);  // fetch all wallets for a user
 }

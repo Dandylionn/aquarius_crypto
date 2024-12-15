@@ -29,15 +29,14 @@ public class PriceServiceImpl implements PriceService {
 //        return priceRepository.findTopByTradePairOrderByTimestampDesc(tradePair);
 //    }
 
-
     @Override
     @Scheduled(fixedRate = 10000) // 10 seconds
     public void fetchAndSaveLatestPrices() {
         try {
-            // Trading pairs to support
+            // hardcoded trading pairs
             List<String> tradingPairs = List.of("BTCUSDT", "ETHUSDT");
 
-            // Fetch prices from Binance
+            // from Binance
             String binanceUrl = "https://api.binance.com/api/v3/ticker/bookTicker";
             List<BinancePrice> binancePrices = restTemplate.exchange(
                     binanceUrl,
@@ -46,12 +45,12 @@ public class PriceServiceImpl implements PriceService {
                     new ParameterizedTypeReference<List<BinancePrice>>() {}
             ).getBody();
 
-            // Fetch prices from Huobi
+            // from Huobi
             String huobiUrl = "https://api.huobi.pro/market/tickers";
             HuobiPriceResponse huobiResponse = restTemplate.getForObject(huobiUrl, HuobiPriceResponse.class);
 
             for (String pair : tradingPairs) {
-                // Find the relevant ticker for the trading pair in both APIs
+                // fetch relevant ticker for the trading pair in both APIs
                 BinancePrice binancePrice = binancePrices.stream()
                         .filter(price -> price.getSymbol().equalsIgnoreCase(pair))
                         .findFirst()
@@ -62,19 +61,14 @@ public class PriceServiceImpl implements PriceService {
                         .findFirst()
                         .orElseThrow(() -> new RuntimeException(pair + " ticker not found in Huobi API"));
 
-                // Calculate the best aggregated price
                 Price aggregatedPrice = calculateBestPrice(binancePrice, huobiPrice, pair);
 
-                // Save to the database
                 priceRepository.save(aggregatedPrice);
-                // Log selected prices
 //                System.out.println("Binance BTCUSDT Price: " + binancePrice);
 //                System.out.println("Huobi BTCUSDT Price: " + huobiPrice);
-                // Log for debugging
                 System.out.println("Aggregated price for " + pair + ": " + aggregatedPrice);
             }
         } catch (Exception e) {
-            // Log the error for debugging purposes
             System.err.println("Error fetching and saving prices: " + e.getMessage());
             e.printStackTrace();
         }
@@ -93,7 +87,6 @@ public class PriceServiceImpl implements PriceService {
             throw new RuntimeException("Bid or Ask price is null, cannot calculate aggregated price for " + tradingPair);
         }
 
-        // Create and return the aggregated price
         Price price = new Price();
         price.setTradePair(tradingPair); // Set trading pair (BTCUSDT or ETHUSDT)
         price.setBidPrice(bestBidPrice);
@@ -126,7 +119,6 @@ public class PriceServiceImpl implements PriceService {
         return value1.min(value2);
     }
 
-    // Classes for Binance API
     public static class BinancePrice {
         private String symbol;
         private BigDecimal bidPrice;
@@ -167,7 +159,6 @@ public class PriceServiceImpl implements PriceService {
         }
     }
 
-    // Classes for Huobi API
     public static class HuobiPrice {
         private String symbol;
         private BigDecimal bid;
