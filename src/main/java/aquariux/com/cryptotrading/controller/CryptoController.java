@@ -117,7 +117,7 @@ public class CryptoController {
                         .body("Invalid trade type. Allowed values are 'BUY' or 'SELL'.");
             }
 
-            // Check if user has sufficient balance
+            // Check if user has sufficient balance for buy trade
             BigDecimal totalCost = price.multiply(amount);
             if ("BUY".equalsIgnoreCase(tradeType) && user.getUsdtBalance().compareTo(totalCost) < 0) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -136,7 +136,13 @@ public class CryptoController {
             // Return successful trade response
             return ResponseEntity.ok(executedTrade);
 
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
+            // Handle Insufficient crypto balance gracefully
+            if (ex.getMessage().contains("Insufficient crypto balance")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Insufficient crypto balance for the trade. Please check your wallet balance.");
+            }
+
             // Log unexpected errors for debugging
             ex.printStackTrace();
 
